@@ -27,8 +27,9 @@ jobs:
 
       - name: Install the project
         run: uv sync --all-extras --dev
-        # TODO Better to use --locked for author control over versions?
         # run: uv sync --locked --all-extras --dev
 
       - name: Run tests
         run: uv run pytest
+
+#

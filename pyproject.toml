@@ -1,0 +1,27 @@
+[project]
+name = "toile"
+version = "0.1.1a1"
+description = "Tools for working with astrocyte dynamics data"
+readme = "README.md"
+authors = [
+    { name = "Maxine Levesque", email = "220467675+maxine-at-forecast@users.noreply.github.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "atdata>=0.1.1a2",
+    "typer>=0.20.0",
+]
+
+[project.scripts]
+toile = "toile:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "jupyter>=1.1.1",
+    "pytest>=8.4.2",
+    "pytest-cov>=7.0.0",
+]

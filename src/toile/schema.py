@@ -10,6 +10,7 @@ import atdata
 from dataclasses import dataclass
 
 from typing import (
+    Any,
     Literal,
     TypeAlias,
 )
@@ -36,6 +37,21 @@ TimeUnit: TypeAlias = Literal[
 ]
 
 Identifier: TypeAlias = int | str
+
+## Convenience stores for intermediate handling
+
+@dataclass
+class Movie( atdata.PackableSample ):
+    """Generic movie data extracted from a TIFF stack"""
+    frames: NDArray
+    metadata: dict[str, Any] | None = None
+    frame_metadata: list[dict[str, Any]] | None = None
+
+@dataclass
+class Frame( atdata.PackableSample ):
+    """Generic image data extracted as a movie frame from a TIFF stack"""
+    image: NDArray
+    metadata: dict[str, Any] | None = None
 
 ## NEW
 

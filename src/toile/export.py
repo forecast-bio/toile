@@ -33,6 +33,8 @@ from ._common import (
 )
 from .tiff_import import (
     load_tiff,
+    _FilenameParser,
+    _make_filename_parser,
 )
 
 #
@@ -128,10 +130,30 @@ class ExportConfig:
     compressed: bool = False
     """TODO"""
 
+    filename_parser: _FilenameParser | None = None
+    """TODO"""
+
 def _parse_config( input_path: _Pathable ) -> ExportConfig:
+
     with open( input_path, 'r' ) as f:
         ret_data = yaml.safe_load( f )
-    return ExportConfig( **ret_data )
+
+    if 'filename_spec' in ret_data:
+        # Cache
+        filename_spec = ret_data['filename_spec']
+        del ret_data['filename_spec']
+    else:
+        filename_spec = None
+    
+    ret = ExportConfig( **ret_data )
+
+    if filename_spec is not None:
+        ret.filename_parser = _make_filename_parser(
+            filename_spec['template'],
+            filename_spec['transforms'],
+        )
+
+    return ret
 
 
 ##
@@ -149,6 +171,7 @@ def export_tiffs(
         #
         kind: ExportKind = 'movies',
         to_uint8: bool = False,
+        filename_parser: _FilenameParser | None = None,
         #
         shard_size: float = 38_000_000.,
         compressed: bool = False,
@@ -211,7 +234,7 @@ def export_tiffs(
             try:
                 cur_ds = load_tiff( cur_input_path,
                     to_uint8 = to_uint8,
-                    # filename_parser = filename_parser,
+                    filename_parser = filename_parser,
                 )
                 _printv( ' Done 🟢' )
             
@@ -348,7 +371,7 @@ def _cli_export_test_frames(
     )
 
 def _standardize_config_args(
-                input: str,
+                input: _Pathable,
                 stem: str = '',
                 #
                 shard_size: int = -1,
@@ -374,7 +397,7 @@ def _standardize_config_args(
 
     else:
         ret = ExportConfig(
-            inputs = [ input ],
+            inputs = [ input_path.as_posix() ],
             output_stem = None if len( stem ) == 0 else stem,
             shard_size = shard_size,
             to_uint8 = uint8,
@@ -393,8 +416,8 @@ def _standardize_config_args(
 
 @app.command( 'frames' )
 def _cli_export_frames(
-            input: str,
-            output: str,
+            input: Path,
+            output: Path,
             stem: str = '',
             #
             shard_size: int = -1,
@@ -421,6 +444,7 @@ def _cli_export_frames(
         #
         to_uint8 = config.to_uint8,
         shard_size = float( config.shard_size ),
+        filename_parser = config.filename_parser,
         #
         verbose = verbose,
         #

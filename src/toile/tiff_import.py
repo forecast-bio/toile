@@ -9,6 +9,7 @@ from glob import glob
 import warnings
 from datetime import datetime
 from uuid import UUID
+import re
 
 import numpy as np
 import skimage.io as skio
@@ -25,6 +26,8 @@ from typing import (
     Any,
     TypeAlias,
 )
+
+_FilenameParser: TypeAlias = Callable[[str], dict[str, Any]]
 
 from ._common import (
     _Pathable,
@@ -173,6 +176,49 @@ def _collate_metadata( raw: dict[str, Any],
 
     return ret
 
+def _unformat( string, pattern ):
+    """TODO"""
+    regex = re.sub( r'{(.+?)}', r'(?P<_\1>.+)', pattern )
+    search_res = re.search( regex, string )
+    assert search_res is not None
+    values = list( search_res.groups() )
+    keys = re.findall(r'{(.+?)}', pattern)
+    _dict = dict(zip(keys, values))
+    return _dict
+
+_filename_parser_transforms = {
+    'identity': lambda d, k, x: dict( **d, **{ k: x } ),
+    'float': lambda d, k, x: dict( **d, **{ k: float( x ) } ),
+    'int': lambda d, k, x: dict( **d, **{ k: int( x ) } ),
+    'split_age_sex': lambda d, k, x: (
+        dict( **d,
+            **{
+                k.split( '_' )[0]: int( x[:-1] ),
+                k.split( '_' )[1]: x[-1],
+            }
+        )
+    ),
+    'date_compact': lambda d, k, x: dict( **d, **{ k: datetime.strptime( x, '%Y%m%d' ).isoformat() } ),
+}
+
+def _make_filename_parser( template: str, transforms: dict[str, str] ) -> _FilenameParser:
+    """TODO"""
+    ##
+    def _ret( x: str ) -> dict[str, Any]:
+        vals_raw = _unformat( x, template )
+
+        vals = dict()
+        vals['_source_filename'] = x
+        for k, cur_transform in transforms.items():
+            if k not in vals_raw:
+                continue
+            cur_v = vals_raw[k]
+            vals = _filename_parser_transforms[cur_transform](vals, k, cur_v )
+        
+        return vals
+    
+    return _ret
+
 
 ##
 # Main routine
@@ -180,7 +226,7 @@ def _collate_metadata( raw: dict[str, Any],
 def load_tiff( path: _Pathable,
         frame_pattern_full: str = '*_*0001.ome.tif*',
         frame_pattern: str = '*.ome.tif*',
-        filename_parser: Optional[Callable[[str], dict]] = None,
+        filename_parser: Optional[_FilenameParser] = None,
         #
         to_uint8: bool = False,
     ) -> Movie:
@@ -190,7 +236,7 @@ def load_tiff( path: _Pathable,
 
     if filename_parser is None:
     #     # TODO More general default behavior
-        filename_parser = lambda x: dict()
+        filename_parser = lambda x: dict( filename = x )
         # filename_parser = _parse_filename_1
 
     #
@@ -261,8 +307,11 @@ def load_tiff( path: _Pathable,
                 image_metadata = _collate_metadata( xmltodict.parse( tif.ome_metadata ) )
             else:
                 image_metadata = dict()
+    
+    frame_metadata = image_metadata.get( 'frames', None )
+    del image_metadata['frames']
 
-    metadata = dict(
+    movie_metadata = dict(
         **filename_metadata,
         **image_metadata,
     )
@@ -271,7 +320,8 @@ def load_tiff( path: _Pathable,
 
     return Movie(
         frames = stack,
-        metadata = metadata,
+        metadata = movie_metadata,
+        frame_metadata = frame_metadata,
     )
 
 

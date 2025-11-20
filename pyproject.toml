@@ -1,6 +1,6 @@
 [project]
 name = "toile"
-version = "0.1.1a2"
+version = "0.1.1a3"
 description = "Tools for working with astrocyte dynamics data"
 readme = "README.md"
 authors = [
@@ -8,7 +8,7 @@ authors = [
 ]
 requires-python = ">=3.12"
 dependencies = [
-    "atdata>=0.1.1a2",
+    "atdata>=0.1.3b3",
     "scikit-image>=0.25.2",
     "typer>=0.20.0",
     "xmltodict>=1.0.2",

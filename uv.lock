@@ -105,7 +105,7 @@ wheels = [
 
 [[package]]
 name = "atdata"
-version = "0.1.2b1"
+version = "0.1.3b3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "fastparquet" },
@@ -116,9 +116,9 @@ dependencies = [
     { name = "tqdm" },
     { name = "webdataset" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a2/30/ad05d924888650767a6ea5e3bbc715f3f971c2521c8b559127e4d222b6e7/atdata-0.1.2b1.tar.gz", hash = "sha256:83332badc9cb00dfaac9f3ede9db5fdf49923f9d2e62828486670cfcedae4899", size = 16306, upload-time = "2025-10-28T22:54:16.75Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f1/5a/ef8fc84e93f7ee8dc43a306aceb6766c2fec57f1277961bca0360036fe82/atdata-0.1.3b3.tar.gz", hash = "sha256:da1c7f2286e92ec55dc7dd988e048ed2a2d0c5a67d9f9496f93ea1dbdb220e11", size = 18171, upload-time = "2025-11-20T17:53:23.322Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ad/df/18f9f4f1f3ca0731fef929bdf74c0217ce5a1cf15d27069519a5cf9abca7/atdata-0.1.2b1-py3-none-any.whl", hash = "sha256:c30355bd1f5f030c7a8ab7638ab3a7df17eea890554b9b7939dd2a0a9dfab1b2", size = 13152, upload-time = "2025-10-28T22:54:15.654Z" },
+    { url = "https://files.pythonhosted.org/packages/21/6e/accf440dfdc2bb201b82fe050830eaa94837f455fe39a9721c3650f87d07/atdata-0.1.3b3-py3-none-any.whl", hash = "sha256:2b05872420e50f986a35bea553bde691395203bedeacf5c0d0c70979eda42698", size = 14517, upload-time = "2025-11-20T17:53:22.526Z" },
 ]
 
 [[package]]

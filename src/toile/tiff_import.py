@@ -1,4 +1,11 @@
-"""TODO"""
+"""
+TIFF import utilities for microscopy data.
+
+This module handles loading TIFF stacks from microscopy recordings,
+with special support for OME-TIFF metadata extraction. It parses
+spatial, temporal, and experimental metadata from XML annotations
+and supports custom filename parsing for batch processing.
+"""
 
 ##
 # Imports
@@ -41,8 +48,16 @@ from ._common import (
 # Routines for collating OME TIFF metadata
 
 def _collate_frame_metadata( raw: dict[str, Any] ) -> dict[str, Any]:
-    """
-    TODO
+    """Extract and normalize per-frame metadata from OME-TIFF XML.
+
+    Parses position (x, y, z), timing (t_index, t), and UUID information
+    from the raw XML dictionary structure.
+
+    Args:
+        raw: Dictionary parsed from OME-TIFF TiffData/Plane XML elements
+
+    Returns:
+        Normalized dictionary with standardized keys (position_x/y/z, t_index, t, uuid)
     """
 
     ret = dict()
@@ -77,8 +92,23 @@ def _collate_frame_metadata( raw: dict[str, Any] ) -> dict[str, Any]:
 def _collate_metadata( raw: dict[str, Any],
         date_format: str = '%Y-%m-%dT%H:%M:%S'
     ) -> dict[str, Any]:
-    """
-    TODO
+    """Extract and normalize movie-level metadata from OME-TIFF XML.
+
+    Parses acquisition date, physical scales, image dimensions, channel info,
+    and per-frame metadata from the full OME XML structure.
+
+    Args:
+        raw: Dictionary parsed from complete OME-TIFF XML metadata
+        date_format: strptime format string for parsing acquisition dates
+
+    Returns:
+        Normalized dictionary with keys including:
+            - uuid: Movie UUID
+            - date_acquired: Acquisition timestamp
+            - scale_x/y/z: Physical pixel sizes in microns
+            - size_x/y/z/t: Image dimensions
+            - channels: List of channel metadata dictionaries
+            - frames: List of per-frame metadata dictionaries
     """
 
     ret = dict()
@@ -177,7 +207,22 @@ def _collate_metadata( raw: dict[str, Any],
     return ret
 
 def _unformat( string, pattern ):
-    """TODO"""
+    """Reverse of string formatting - extract values from a formatted string.
+
+    Given a string and a format pattern with {placeholders}, extracts the
+    values that were used to create the string.
+
+    Args:
+        string: The formatted string to parse
+        pattern: Format pattern with {key} placeholders (e.g., "mouse_{mouse_id}_slice_{slice_id}.tif")
+
+    Returns:
+        Dictionary mapping placeholder names to extracted values
+
+    Example:
+        >>> _unformat("mouse_123_slice_A5.tif", "mouse_{mouse_id}_slice_{slice_id}.tif")
+        {'mouse_id': '123', 'slice_id': 'A5'}
+    """
     regex = re.sub( r'{(.+?)}', r'(?P<_\1>.+)', pattern )
     search_res = re.search( regex, string )
     assert search_res is not None
@@ -202,7 +247,27 @@ _filename_parser_transforms = {
 }
 
 def _make_filename_parser( template: str, transforms: dict[str, str] ) -> _FilenameParser:
-    """TODO"""
+    """Create a custom filename parser from a template and transforms.
+
+    Builds a function that extracts structured metadata from filenames
+    using a format template and type conversions.
+
+    Args:
+        template: Format pattern with {key} placeholders (e.g., "{date}_{mouse_id}_{slice_id}.tif")
+        transforms: Dictionary mapping placeholder names to transform functions
+            Available transforms: 'identity', 'float', 'int', 'split_age_sex', 'date_compact'
+
+    Returns:
+        A parser function that takes a filename string and returns a metadata dictionary
+
+    Example:
+        >>> parser = _make_filename_parser(
+        ...     "mouse_{mouse_id}_age_{age}.tif",
+        ...     {"mouse_id": "int", "age": "int"}
+        ... )
+        >>> parser("mouse_42_age_120.tif")
+        {'_source_filename': 'mouse_42_age_120.tif', 'mouse_id': 42, 'age': 120}
+    """
     ##
     def _ret( x: str ) -> dict[str, Any]:
         vals_raw = _unformat( x, template )
@@ -230,6 +295,37 @@ def load_tiff( path: _Pathable,
         #
         to_uint8: bool = False,
     ) -> Movie:
+    """Load a TIFF stack from a directory with OME-TIFF metadata extraction.
+
+    Searches for TIFF files matching the specified patterns, loads the image
+    stack, and extracts all available metadata from OME-TIFF XML annotations.
+    Supports optional filename parsing for batch processing and uint8 normalization
+    for ML pipelines.
+
+    Args:
+        path: Directory path containing TIFF files
+        frame_pattern_full: Glob pattern for full stack files (default: first frame pattern)
+        frame_pattern: Fallback glob pattern for TIFF files
+        filename_parser: Optional function to extract metadata from filenames
+            If None, only filename is stored in metadata
+        to_uint8: If True, normalize stack to uint8 (0-255) based on stack-wide max value
+
+    Returns:
+        Movie object containing:
+            - frames: 3D numpy array (time, height, width)
+            - metadata: Combined filename and OME-TIFF metadata
+            - frame_metadata: List of per-frame metadata dictionaries
+
+    Raises:
+        RuntimeError: If no matching TIFF files found or unsupported multi-channel format
+
+    Example:
+        >>> movie = load_tiff("/path/to/recording/")
+        >>> movie.frames.shape
+        (900, 512, 512)
+        >>> movie.metadata['date_acquired']
+        '2024-01-15T14:30:00'
+    """
 
     # Normalize args
     path = Path( path )

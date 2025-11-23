@@ -2397,7 +2397,7 @@ wheels = [
 
 [[package]]
 name = "toile"
-version = "0.1.1a3"
+version = "0.1.1b1"
 source = { editable = "." }
 dependencies = [
     { name = "atdata" },

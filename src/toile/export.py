@@ -1,5 +1,10 @@
 """
-Utilities for exporting data
+Export utilities for converting TIFF stacks to WebDataset format.
+
+This module provides the core export pipeline for converting microscopy
+TIFF recordings into WebDataset tar archives for machine learning workflows.
+Supports batch processing via config files, glob patterns, and configurable
+shard sizes for compatibility with different storage backends (e.g., Bluesky PDS).
 """
 
 ##
@@ -62,8 +67,20 @@ def _write_movie_frames(
             key_template: Optional[str] = None,
             i_start: int = 0,
         ) -> int:
-    """
-    TODO
+    """Write individual frames from a Movie to a WebDataset writer.
+
+    Splits a Movie into individual Frame samples and writes them to the
+    WebDataset archive with sequential keys.
+
+    Args:
+        ds: Movie object containing frames and metadata
+        dest: WebDataset ShardWriter or TarWriter to write samples to
+        key_template: Optional format string for sample keys (default: 'sample{i:06d}')
+            Can use {i_dataset} for global index, {i_group} for frame index
+        i_start: Starting index for sample numbering
+
+    Returns:
+        Final sample index after writing all frames
     """
     ##
 
@@ -113,27 +130,64 @@ def _write_movie_frames(
 
 @dataclass
 class ExportConfig:
-    """TODO"""
+    """Configuration for TIFF export operations.
+
+    Can be loaded from YAML files for batch processing or constructed
+    programmatically. Specifies input file patterns, output settings,
+    and optional filename parsing.
+
+    Attributes:
+        inputs: List of file paths or glob patterns for input TIFF files
+        output_stem: Optional stem for output tar archive names (default: output directory name)
+        shard_size: Maximum size in bytes for each tar shard (default: 850MB)
+        to_uint8: Whether to normalize images to uint8 (0-255) range
+        compressed: Whether to compress output tar files (not yet implemented)
+        filename_parser: Optional parser function for extracting metadata from filenames
+    """
     ##
 
     # Required
     inputs: list[str]
-    """TODO"""
+    """List of file paths or glob patterns for input TIFF files"""
 
     # Optional
     output_stem: str | None = None
-    """TODO"""
+    """Optional stem for output tar archive names (default: output directory name)"""
     shard_size: int = 850_000_000
-    """TODO"""
+    """Maximum size in bytes for each tar shard (default: 850MB for WebDataset standard)"""
     to_uint8: bool = False
-    """TODO"""
+    """Whether to normalize images to uint8 (0-255) range"""
     compressed: bool = False
-    """TODO"""
+    """Whether to compress output tar files (not yet implemented)"""
 
     filename_parser: _FilenameParser | None = None
-    """TODO"""
+    """Optional parser function for extracting metadata from filenames"""
 
 def _parse_config( input_path: _Pathable ) -> ExportConfig:
+    """Load an ExportConfig from a YAML configuration file.
+
+    The YAML file should contain keys matching ExportConfig attributes.
+    Optionally includes a 'filename_spec' section with 'template' and
+    'transforms' for custom filename parsing.
+
+    Args:
+        input_path: Path to YAML configuration file
+
+    Returns:
+        ExportConfig object with settings from the YAML file
+
+    Example YAML format:
+        inputs:
+          - "/path/to/data/**/*.tif"
+        output_stem: "my_dataset"
+        shard_size: 38000000
+        to_uint8: true
+        filename_spec:
+          template: "mouse_{mouse_id}_slice_{slice_id}.tif"
+          transforms:
+            mouse_id: int
+            slice_id: identity
+    """
 
     with open( input_path, 'r' ) as f:
         ret_data = yaml.safe_load( f )
@@ -180,7 +234,37 @@ def export_tiffs(
         #
         **kwargs
     ) -> None:
-    """TODO"""
+    """Export TIFF files to WebDataset format with configurable options.
+
+    Main export pipeline that loads TIFF stacks, extracts metadata, and
+    writes samples to sharded tar archives. Supports glob patterns for
+    batch processing and reports success/failure statistics.
+
+    Args:
+        _inputs: List of file paths or glob patterns for input TIFF directories
+        _output_dir: Output directory for tar archives
+        _stem: Optional stem for output filenames (default: output directory name)
+        kind: Export type - 'movies' (full stacks), 'frames' (individual frames), or 'clips'
+        to_uint8: Normalize images to uint8 (0-255) range
+        filename_parser: Optional function to extract metadata from filenames
+        shard_size: Maximum size in bytes for each tar shard
+        compressed: Enable compression (not yet implemented)
+        verbose: Print detailed progress messages
+        **kwargs: Additional arguments passed to WebDataset writer
+
+    Returns:
+        None (writes files to disk)
+
+    Example:
+        >>> export_tiffs(
+        ...     ["/data/experiment1/*.tif", "/data/experiment2/*.tif"],
+        ...     "/output/dataset",
+        ...     stem="astrocyte_recordings",
+        ...     kind="frames",
+        ...     to_uint8=True,
+        ...     verbose=True
+        ... )
+    """
     ##
 
     def _printv( *a, **b ):
@@ -299,7 +383,24 @@ def export_test(
         #
         **kwargs
     ) -> None:
-    """TODO"""
+    """Generate a synthetic test dataset in WebDataset format.
+
+    Creates random image data for testing WebDataset pipelines without
+    requiring actual microscopy data. Useful for development and testing.
+
+    Args:
+        output_dir: Directory to write test dataset
+        stem: Optional stem for output filenames (default: output directory name)
+        kind: Dataset type - currently only 'frames' is supported
+        compressed: Enable gzip compression of tar files
+        **kwargs: Additional arguments passed to WebDataset ShardWriter
+
+    Returns:
+        None (writes files to disk)
+
+    Example:
+        >>> export_test("/tmp/test_dataset", kind="frames", compressed=True)
+    """
 
     image_size = (256, 256)
     image_planes = 900
@@ -364,6 +465,10 @@ def _cli_export_test_frames(
             stem: str = '',
             compressed: bool = False,
         ):
+    """CLI command: Generate a synthetic test dataset of random frames.
+
+    Usage: toile export test-frames OUTPUT [--stem STEM] [--compressed]
+    """
     export_test( output, stem,
         compressed = compressed,
         #
@@ -380,7 +485,23 @@ def _standardize_config_args(
                 uint8: bool = False,
                 compressed: bool = False,
             ) -> ExportConfig:
-    
+    """Normalize CLI arguments into an ExportConfig object.
+
+    Handles both YAML config files and direct file path inputs. Sets
+    appropriate default shard sizes based on target platform.
+
+    Args:
+        input: Path to YAML config file or direct input file/glob pattern
+        stem: Optional output filename stem
+        shard_size: Maximum shard size in bytes (-1 for auto-selection)
+        pds: If True, use PDS-compatible shard size (38MB for Bluesky)
+        uint8: Normalize images to uint8 range
+        compressed: Enable compression
+
+    Returns:
+        ExportConfig object with normalized settings
+    """
+
     if shard_size < 0:
         # Set default shard sizes based on target
 
@@ -428,7 +549,28 @@ def _cli_export_frames(
             #
             verbose: bool = False,
         ):
-    
+    """CLI command: Export TIFF stacks to WebDataset format as individual frames.
+
+    Processes TIFF directories or uses a YAML config file for batch processing.
+    Extracts OME-TIFF metadata and writes sharded tar archives.
+
+    Usage: toile export frames INPUT OUTPUT [OPTIONS]
+
+    Args:
+        input: Path to TIFF directory or YAML config file
+        output: Output directory for tar archives
+        stem: Optional output filename stem
+        shard_size: Maximum shard size in bytes (-1 for auto)
+        pds: Use PDS-compatible shard size (38MB for Bluesky)
+        uint8: Normalize images to uint8 (0-255) range
+        compressed: Enable compression (not yet implemented)
+        verbose: Print detailed progress information
+
+    Example:
+        toile export frames /data/recordings /output/dataset --uint8 --verbose
+        toile export frames config.yaml /output/dataset --pds
+    """
+
     config = _standardize_config_args(
         input, stem, shard_size, pds, uint8, compressed,
     )

@@ -1,5 +1,8 @@
 """
-TODO
+Toile - Tools for working with astrocyte dynamics data
+
+This package provides utilities for importing microscopy TIFF stacks
+and exporting them to WebDataset format for machine learning pipelines.
 """
 
 from typer import Typer
@@ -17,6 +20,7 @@ app.add_typer( export_app, name = 'export' )
 ##
 
 def main():
+    """Entry point for the toile CLI application."""
     app()
 
 

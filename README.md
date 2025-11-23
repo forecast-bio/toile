@@ -1,8 +1,10 @@
 # toile
 
-**Tools for working with astrocyte dynamics data**
+**CLI tools for working with astrocyte dynamics data**
 
 Toile is a Python package for converting microscopy TIFF stacks into WebDataset format for machine learning pipelines. It handles OME-TIFF metadata extraction, batch processing, and creates sharded tar archives optimized for distributed training.
+
+—❤️‍🔥 [Forecast](https://forecast.bio/)
 
 ## Features
 

@@ -19,7 +19,7 @@ Install using `uv` (recommended) or `pip`:
 
 ```bash
 # Using uv
-uv pip install toile
+uv add toile
 
 # Using pip
 pip install toile
@@ -140,10 +140,10 @@ toile export frames config.yaml /output/dataset
 
 Toile uses structured schemas built on the `atdata` framework:
 
-- **Movie**: Full TIFF stack with metadata
-- **Frame**: Individual image frame with combined metadata
-- **SliceRecordingFrame**: Experimental frames with mouse/slice identifiers
-- **ImageSample**: Minimal image data for ML pipelines
+- **`Movie`**: Full TIFF stack with metadata
+- **`Frame`**: Individual image frame with combined metadata
+- **`SliceRecordingFrame`**: Experimental frames with mouse/slice identifiers
+- **`ImageSample`**: Minimal image data for ML pipelines
 
 Metadata includes acquisition timestamps, physical scales, stage positions, and channel information extracted from OME-TIFF annotations.
 
@@ -177,7 +177,7 @@ uv build
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the Mozilla Public License 2.0 (MPL-2.0) - see the [LICENSE](LICENSE) file for details.
 
 ## Acknowledgments
 
@@ -185,3 +185,5 @@ Built with:
 - [atdata](https://github.com/foundation-ac/atdata) - Streaming schematized datasets framework
 - [webdataset](https://github.com/webdataset/webdataset) - Efficient streaming datasets for ML and more
 - [scikit-image](https://scikit-image.org/) - Some good standard impl for image basics
+
+Claude wrote the majority of the docs—if they hallucinated anything, let us know in the [Issues](https://github.com/forecast-bio/toile/issues)!
